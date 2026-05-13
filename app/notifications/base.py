@@ -5,6 +5,9 @@ from abc import ABC, abstractmethod
 from app.models import NotificationPayload
 
 
+class ConnectorException(Exception): ...
+
+
 class NotificationConnector(ABC):
     name: str
 

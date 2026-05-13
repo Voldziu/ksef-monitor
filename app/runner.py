@@ -3,12 +3,12 @@ from __future__ import annotations
 import time
 from datetime import UTC, datetime
 
-from ksef_client.exceptions import KsefRateLimitError
+from ksef_client.exceptions import KsefApiError, KsefHttpError, KsefRateLimitError
 
 from app import metrics
 from app.ksef.service import KsefService
 from app.models import Invoice, MonitorResult, NotificationPayload
-from app.notifications.base import NotificationConnector
+from app.notifications.base import ConnectorException, NotificationConnector
 from app.storage.repository import Repository
 from app.utils.logger import get_logger
 
@@ -37,6 +37,8 @@ def _build_payload(invoices: list[Invoice], nip: str) -> NotificationPayload:
         for inv in invoices
     )
     body_html = (
+        "<p> Fajne zrobiłem? Narazie testowo :D</p>"
+        f"<p>Wykryto {count} nowych faktur w KSeF dla NIP {nip}:</p>"
         "<table border='1' cellpadding='4' cellspacing='0'>"
         "<tr><th>Nr KSeF</th><th>Nr faktury</th><th>Sprzedawca</th><th>Kwota brutto</th><th>Data wystawienia</th></tr>"
         f"{html_rows}</table>"
@@ -66,16 +68,19 @@ def run_once(
 
     try:
         all_invoices = ksef_service.fetch_received_invoices(since=since)
-    except KsefRateLimitError as exc:
-        logger.error(
-            "KSeF rate limit exceeded (429), retry_after=%s seconds",
-            exc.retry_after,
-        )
-        result = MonitorResult(new_count=0, skipped_count=0, errors=[str(exc)])
-        metrics.record_cycle(result, time.perf_counter() - _t0)
-        return result
-    except Exception as exc:
-        logger.error("Failed to fetch invoices from KSeF: %s", exc)
+    except (KsefRateLimitError, KsefApiError, KsefHttpError, Exception) as exc:
+        if isinstance(exc, KsefRateLimitError):
+            logger.exception(
+                "KSeF rate limit exceeded (429), retry_after=%s seconds",
+                exc.retry_after,
+            )
+        elif isinstance(exc, KsefApiError):
+            logger.exception("KSeF API error: %s", exc)
+        elif isinstance(exc, KsefHttpError):
+            logger.exception("KSeF HTTP error: %s", exc)
+        else:
+            logger.exception("Failed to fetch invoices from KSeF: %s", exc)
+
         result = MonitorResult(new_count=0, skipped_count=0, errors=[str(exc)])
         metrics.record_cycle(result, time.perf_counter() - _t0)
         return result
@@ -91,9 +96,15 @@ def run_once(
         for connector in connectors:
             try:
                 connector.send(payload)
+            except ConnectorException as exc:
+                logger.exception("Connector %r failed: %s", connector.name, exc)
             except Exception as exc:
-                logger.error("Connector %r failed: %s", connector.name, exc)
-                errors.append(f"{connector.name}: {exc}")
+                logger.exception(
+                    "Unexpected error in connector %r: %s",
+                    connector.name,
+                    exc,
+                )
+            logger.info("Connector %r done", connector.name)
 
         for inv in new_invoices:
             repo.mark_seen(inv.ksef_reference_number)

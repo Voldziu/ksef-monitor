@@ -12,6 +12,30 @@ _configured = False
 _LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)-30s | %(funcName)s:%(lineno)d | %(message)s"
 
 
+class NoTracebackFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        exc_info, exc_text = record.exc_info, record.exc_text
+        record.exc_info = None
+        record.exc_text = None
+        try:
+            return super().format(record)
+        finally:
+            record.exc_info = exc_info
+            record.exc_text = exc_text
+
+
+class NoTracebackJsonFormatter(JsonFormatter):
+    def format(self, record: logging.LogRecord) -> str:
+        exc_info, exc_text = record.exc_info, record.exc_text
+        record.exc_info = None
+        record.exc_text = None
+        try:
+            return super().format(record)
+        finally:
+            record.exc_info = exc_info
+            record.exc_text = exc_text
+
+
 def setup_logging(settings: Settings) -> None:
     global _configured
     if _configured:
@@ -27,7 +51,7 @@ def setup_logging(settings: Settings) -> None:
 
     if settings.LOG_TO_CONSOLE:
         if settings.LOG_FORMAT == "json":
-            fmt = JsonFormatter(
+            fmt = NoTracebackJsonFormatter(
                 "%(timestamp)s %(level)s %(logger)s %(module)s %(funcName)s %(lineno)d %(message)s",
                 rename_fields={
                     "asctime": "timestamp",
@@ -36,7 +60,7 @@ def setup_logging(settings: Settings) -> None:
                 },
             )
         else:
-            fmt = logging.Formatter(_LOG_FORMAT)
+            fmt = NoTracebackFormatter(_LOG_FORMAT)
         ch = logging.StreamHandler()
         ch.setLevel(level)
         ch.setFormatter(fmt)
@@ -45,7 +69,7 @@ def setup_logging(settings: Settings) -> None:
     if settings.LOG_TO_FILE:
         settings.LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-        file_fmt = logging.Formatter(_LOG_FORMAT)
+        file_fmt = NoTracebackFormatter(_LOG_FORMAT)
 
         fh = logging.handlers.RotatingFileHandler(
             settings.LOG_DIR / settings.LOG_FILE_NAME,
@@ -64,7 +88,9 @@ def setup_logging(settings: Settings) -> None:
             encoding="utf-8",
         )
         eh.setLevel(logging.ERROR)
-        eh.setFormatter(file_fmt)
+
+        error_fmt = logging.Formatter(_LOG_FORMAT)
+        eh.setFormatter(error_fmt)
         app_logger.addHandler(eh)
 
     for noisy in ("urllib3", "httpx", "httpcore", "smtplib", "ksef_client"):
