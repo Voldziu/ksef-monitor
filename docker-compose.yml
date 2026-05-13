@@ -7,9 +7,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/app/app
-      - ./logs:/app/logs
-      - ./data:/app/data
+      - ./app:/workspace/app
+      - ./logs:/workspace/logs
+      - ./data:/workspace/data
+      - ./scripts:/workspace/scripts
     restart: unless-stopped
 
   prometheus:

@@ -13,7 +13,7 @@ from app.utils.logger import setup_logging
 
 
 class _FakeKsefService:
-    def fetch_received_invoices(self, since):  # noqa: ANN001
+    def fetch_received_invoices(self, since=None, to=None):  # noqa: ANN001, ARG002
         ref = f"TEST-{int(time.time())}"
         return [
             Invoice(

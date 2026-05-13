@@ -14,6 +14,7 @@ from ksef_client.services import AuthCoordinator
 
 from app.config import Settings
 from app.models import Invoice
+from app.utils.date import _today_midnight
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -104,7 +105,7 @@ class KsefService:
             logger.info(
                 "KSeF authentication successful (token valid until %s)",
                 self._access_token_expires_at.astimezone().strftime(
-                    "%Y-%m-%d %H:%M:%S"
+                    "%Y-%m-%d %H:%M:%S",
                 ),
             )
         except (KsefApiError, KsefHttpError) as exc:
@@ -135,20 +136,25 @@ class KsefService:
                 page_offset += page_size
         return invoices
 
-    def fetch_received_invoices(self, since: datetime | None = None) -> list[Invoice]:
+    def fetch_received_invoices(
+        self,
+        since: datetime | None = None,
+        to: datetime | None = None,
+    ) -> list[Invoice]:
         self._ensure_authenticated()
 
-        now = datetime.now(UTC)
+        if to is None:
+            to = datetime.now(UTC)
         if since is None:
-            since = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            since = _today_midnight()
 
         date_from = since.strftime("%Y-%m-%dT%H:%M:%SZ")
-        date_to = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        date_to = to.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         logger.info(
             "Fetching received invoices [%s -> %s]",
             since.astimezone().strftime("%Y-%m-%d %H:%M:%S"),
-            now.astimezone().strftime("%Y-%m-%d %H:%M:%S"),
+            to.astimezone().strftime("%Y-%m-%d %H:%M:%S"),
         )
 
         try:
