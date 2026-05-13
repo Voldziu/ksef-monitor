@@ -14,6 +14,8 @@ wheels/
 
 logs/
 data/
+secrets/*
+!secrets/README.md
 
 __pycache__/
 

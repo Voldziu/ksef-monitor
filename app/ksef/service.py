@@ -11,6 +11,8 @@ from ksef_client.models import (
     InvoiceQuerySubjectType,
 )
 from ksef_client.services import AuthCoordinator
+from ksef_client.services.workflows import AuthResult
+from ksef_client.services.xades import XadesKeyPair
 
 from app.config import Settings
 from app.models import Invoice
@@ -83,34 +85,60 @@ class KsefService:
             self.authenticate()
 
     def authenticate(self) -> None:
-        logger.info("Authenticating with KSeF", extra={"env": self._settings.KSEF_ENV})
+        method = self._settings.KSEF_AUTH_METHOD
+        logger.info(
+            "Authenticating with KSeF",
+            extra={"env": self._settings.KSEF_ENV, "method": method},
+        )
         self._access_token = None
         self._access_token_expires_at = None
         try:
             with KsefClient(self._options) as client:
-                enc_cert = client.security.get_public_key_certificate(
-                    "KsefTokenEncryption",
-                )
-                result = AuthCoordinator(client.auth).authenticate_with_ksef_token(
-                    token=self._settings.KSEF_TOKEN,
-                    public_certificate=enc_cert.certificate,
-                    public_key_id=enc_cert.public_key_id,
-                    context_identifier_type="NIP",
-                    context_identifier_value=self._settings.KSEF_NIP,
-                )
+                if method == "certificate":
+                    result = self._authenticate_with_certificate(client)
+                else:
+                    result = self._authenticate_with_token(client)
                 self._access_token = result.tokens.access_token.token
                 self._access_token_expires_at = _parse_valid_until(
                     result.tokens.access_token.valid_until,
                 )
             logger.info(
-                "KSeF authentication successful (token valid until %s)",
+                "KSeF authentication successful (method=%s, valid until %s)",
+                method,
                 self._access_token_expires_at.astimezone().strftime(
                     "%Y-%m-%d %H:%M:%S",
                 ),
             )
         except (KsefApiError, KsefHttpError) as exc:
-            logger.exception("KSeF authentication failed: %s", exc)
+            logger.exception(
+                "KSeF authentication failed (method=%s): %s", method, exc,
+            )
             raise
+
+    def _authenticate_with_token(self, client: KsefClient) -> AuthResult:
+        enc_cert = client.security.get_public_key_certificate(
+            "KsefTokenEncryption",
+        )
+        return AuthCoordinator(client.auth).authenticate_with_ksef_token(
+            token=self._settings.KSEF_TOKEN,
+            public_certificate=enc_cert.certificate,
+            public_key_id=enc_cert.public_key_id,
+            context_identifier_type="NIP",
+            context_identifier_value=self._settings.KSEF_NIP,
+        )
+
+    def _authenticate_with_certificate(self, client: KsefClient) -> AuthResult:
+        key_pair = XadesKeyPair.from_pem_files(
+            certificate_path=str(self._settings.KSEF_CERT_PATH),
+            private_key_path=str(self._settings.KSEF_KEY_PATH),
+            private_key_password=self._settings.KSEF_KEY_PASSWORD or None,
+        )
+        return AuthCoordinator(client.auth).authenticate_with_xades_key_pair(
+            key_pair=key_pair,
+            context_identifier_type="NIP",
+            context_identifier_value=self._settings.KSEF_NIP,
+            subject_identifier_type=self._settings.KSEF_CERT_SUBJECT_IDENTIFIER_TYPE,
+        )
 
     def _query_invoices(self, date_from: str, date_to: str) -> list[Invoice]:
         invoices: list[Invoice] = []

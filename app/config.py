@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +15,12 @@ class Settings(BaseSettings):
     # KSeF
     KSEF_ENV: Literal["test", "demo", "prod"] = "test"
     KSEF_NIP: str = ""
+    KSEF_AUTH_METHOD: Literal["token", "certificate"] = "token"
     KSEF_TOKEN: str = ""
+    KSEF_CERT_PATH: Path | None = None
+    KSEF_KEY_PATH: Path | None = None
+    KSEF_KEY_PASSWORD: str = ""
+    KSEF_CERT_SUBJECT_IDENTIFIER_TYPE: str = "certificateSubject"
     CHECK_INTERVAL_MINUTES: int = 15
 
     # Notifications
@@ -53,6 +58,31 @@ class Settings(BaseSettings):
         if v not in ("test", "demo", "prod"):
             raise ValueError("KSEF_ENV must be one of: test, demo, prod")
         return v
+
+    @model_validator(mode="after")
+    def validate_auth_method(self) -> Settings:
+        if not self.KSEF_NIP:
+            raise ValueError("KSEF_NIP is required")
+        if self.KSEF_AUTH_METHOD == "token":
+            if not self.KSEF_TOKEN:
+                raise ValueError(
+                    "KSEF_TOKEN is required when KSEF_AUTH_METHOD=token",
+                )
+        else:
+            if self.KSEF_CERT_PATH is None or self.KSEF_KEY_PATH is None:
+                raise ValueError(
+                    "KSEF_CERT_PATH and KSEF_KEY_PATH are required when "
+                    "KSEF_AUTH_METHOD=certificate",
+                )
+            if not self.KSEF_CERT_PATH.exists():
+                raise ValueError(
+                    f"KSEF_CERT_PATH does not exist: {self.KSEF_CERT_PATH}",
+                )
+            if not self.KSEF_KEY_PATH.exists():
+                raise ValueError(
+                    f"KSEF_KEY_PATH does not exist: {self.KSEF_KEY_PATH}",
+                )
+        return self
 
     def ksef_base_url(self) -> str:
         urls = {
