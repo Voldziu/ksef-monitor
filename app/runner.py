@@ -57,17 +57,20 @@ def run_once(
     repo: Repository,
     connectors: list[NotificationConnector],
     nip: str,
+    since: datetime | None = None,
+    to: datetime | None = None,
 ) -> MonitorResult:
     errors: list[str] = []
     new_invoices: list[Invoice] = []
     skipped = 0
     _t0 = time.perf_counter()
 
-    since = repo.last_check_timestamp()
+    if since is None:
+        since = repo.last_check_timestamp()
     check_start = datetime.now(UTC)
 
     try:
-        all_invoices = ksef_service.fetch_received_invoices(since=since)
+        all_invoices = ksef_service.fetch_received_invoices(since=since, to=to)
     except (KsefRateLimitError, KsefApiError, KsefHttpError, Exception) as exc:
         if isinstance(exc, KsefRateLimitError):
             logger.exception(
@@ -108,7 +111,8 @@ def run_once(
 
         for inv in new_invoices:
             repo.mark_seen(inv.ksef_reference_number)
-
+    else:
+        logger.info("No new invoices found")
     repo.save_check_timestamp(check_start)
 
     result = MonitorResult(
