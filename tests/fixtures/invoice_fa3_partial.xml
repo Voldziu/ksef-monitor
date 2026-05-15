@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek>
+    <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
+    <DataWytworzeniaFa>2026-05-10T08:00:00Z</DataWytworzeniaFa>
+  </Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne>
+      <NIP>1234567890</NIP>
+      <Nazwa>BYNIODENT Sp. z o.o.</Nazwa>
+    </DaneIdentyfikacyjne>
+  </Podmiot1>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty>
+    <P_1>2026-05-10</P_1>
+    <P_2>FV/TEST/2026/003</P_2>
+    <P_15>1230.00</P_15>
+    <Platnosc>
+      <ZaplaconoCzesciowo>1</ZaplaconoCzesciowo>
+      <KwotaZaplacona>500,00</KwotaZaplacona>
+      <FormaPlatnosci>6</FormaPlatnosci>
+      <TerminPlatnosci>
+        <Termin>2026-05-24</Termin>
+      </TerminPlatnosci>
+    </Platnosc>
+  </Fa>
+</Faktura>

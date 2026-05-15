@@ -15,7 +15,9 @@ from ksef_client.services.workflows import AuthResult
 from ksef_client.services.xades import XadesKeyPair
 
 from app.config import Settings
-from app.models import Invoice
+from app.ksef.invoice_xml import parse_payment_info
+from app.ksef.validation import validate_fa3_xml
+from app.models import Invoice, PaymentInfo
 from app.utils.date import _today_midnight
 from app.utils.logger import get_logger
 
@@ -36,7 +38,10 @@ def _parse_valid_until(value: str | None) -> datetime | None:
     return dt
 
 
-def _map_invoice(meta: InvoiceMetadata) -> Invoice | None:
+def _map_invoice(
+    meta: InvoiceMetadata,
+    payment: PaymentInfo | None = None,
+) -> Invoice | None:
     if not meta.ksef_number:
         return None
     seller_nip: str | None = None
@@ -61,7 +66,37 @@ def _map_invoice(meta: InvoiceMetadata) -> Invoice | None:
         acquisition_date=meta.acquisition_date,
         gross_amount=meta.gross_amount,
         currency=meta.currency,
+        payment=payment or PaymentInfo(),
     )
+
+
+def _fetch_payment_info(
+    client: KsefClient,
+    ksef_number: str,
+    access_token: str | None,
+) -> PaymentInfo:
+    if not access_token:
+        return PaymentInfo()
+    try:
+        content = client.invoices.get_invoice(
+            ksef_number,
+            access_token=access_token,
+        )
+        errors = validate_fa3_xml(content.content)
+        if errors:
+            logger.warning(
+                "Invoice XML failed FA(3) XSD validation (ksef_number=%s): %s",
+                ksef_number,
+                "; ".join(errors[:3]),
+            )
+        return parse_payment_info(content.content)
+    except (KsefApiError, KsefHttpError) as exc:
+        logger.warning(
+            "Failed to fetch invoice XML for payment info (ksef_number=%s): %s",
+            ksef_number,
+            exc,
+        )
+        return PaymentInfo()
 
 
 class KsefService:
@@ -156,7 +191,14 @@ class KsefService:
                     page_offset=page_offset,
                 )
                 for meta in resp.invoices:
-                    inv = _map_invoice(meta)
+                    if not meta.ksef_number:
+                        continue
+                    payment = _fetch_payment_info(
+                        client,
+                        meta.ksef_number,
+                        self._access_token,
+                    )
+                    inv = _map_invoice(meta, payment)
                     if inv:
                         invoices.append(inv)
                 if not resp.has_more:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from app.config import Settings
-from app.models import Invoice
+from app.models import Invoice, PaymentInfo
 from app.notifications.factory import build_connectors
 from app.runner import run_once
 from app.storage.repository import Repository
@@ -25,6 +25,10 @@ class _FakeKsefService:
                 acquisition_date="2026-05-10",
                 gross_amount=1230.00,
                 currency="PLN",
+                payment=PaymentInfo(
+                    payment_due_date="2026-05-24",
+                    paid=False,
+                ),
             ),
             Invoice(
                 ksef_reference_number=f"TEST-{int(time.time() - 2)}",
@@ -35,6 +39,10 @@ class _FakeKsefService:
                 acquisition_date="2026-05-11",
                 gross_amount=1230.00,
                 currency="PLN",
+                payment=PaymentInfo(
+                    paid=True,
+                    payment_date="2026-05-11",
+                ),
             ),
         ]
 

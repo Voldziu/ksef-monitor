@@ -22,25 +22,64 @@ def _build_payload(invoices: list[Invoice], nip: str) -> NotificationPayload:
     lines = [f"Wykryto {count} nowych faktur w KSeF dla NIP {nip}:", ""]
     for inv in invoices:
         amount = f"{inv.gross_amount:.2f} {inv.currency}" if inv.gross_amount else "—"
+        if inv.payment.paid:
+            payment_status = (
+                f"opłacona ({inv.payment.payment_date})"
+                if inv.payment.payment_date
+                else "opłacona"
+            )
+        elif inv.payment.payment_due_date:
+            payment_status = f"do zapłaty do {inv.payment.payment_due_date}"
+        else:
+            payment_status = "—"
         lines.append(
             f"  • {inv.ksef_reference_number} | {inv.invoice_number or '—'} | "
-            f"{inv.seller_name or inv.seller_nip or '—'} | {amount} | {inv.issue_date or '—'}",
+            f"{inv.seller_name or inv.seller_nip or '—'} | {amount} | "
+            f"{inv.issue_date or '—'} | {payment_status}",
         )
 
     body_text = "\n".join(lines)
+
+    def _payment_cells(inv: Invoice) -> str:
+        paid_cell = (
+            "Tak" if inv.payment.paid else ("Nie" if inv.payment.paid is False else "—")
+        )
+        return (
+            f"<td>{inv.payment.payment_due_date or '—'}</td>"
+            f"<td>{paid_cell}</td>"
+            f"<td>{inv.payment.payment_date or '—'}</td>"
+        )
 
     html_rows = "".join(
         f"<tr><td>{inv.ksef_reference_number}</td><td>{inv.invoice_number or '—'}</td>"
         f"<td>{inv.seller_name or inv.seller_nip or '—'}</td>"
         f"<td>{f'{inv.gross_amount:.2f} {inv.currency}' if inv.gross_amount else '—'}</td>"
-        f"<td>{inv.issue_date or '—'}</td></tr>"
+        f"<td>{inv.issue_date or '—'}</td>"
+        f"{_payment_cells(inv)}</tr>"
         for inv in invoices
     )
+
+    # flower = """
+    # <pre style="font-family:monospace; line-height:1.5; color:#555;">
+    #             ,-.
+    #         ( ( )
+    #         `-'
+    #         _|_|_
+    #         /|   |\\
+    #     ( |   | )
+    #         \\|___|/
+    #         | |
+    # ~~~~~~~~~~~~~~~~~~~~
+    # Nowe faktury KSeF!
+    # ~~~~~~~~~~~~~~~~~~~~
+    # </pre>
+    # """
     body_html = (
-        "<p> Fajne zrobiłem? Narazie testowo :D</p>"
         f"<p>Wykryto {count} nowych faktur w KSeF dla NIP {nip}:</p>"
         "<table border='1' cellpadding='4' cellspacing='0'>"
-        "<tr><th>Nr KSeF</th><th>Nr faktury</th><th>Sprzedawca</th><th>Kwota brutto</th><th>Data wystawienia</th></tr>"
+        "<tr><th>Nr KSeF</th><th>Nr faktury</th><th>Sprzedawca</th>"
+        "<th>Kwota brutto</th><th>Data wystawienia</th>"
+        "<th>Termin płatności</th><th>Opłacona</th><th>Data zapłaty</th></tr>"
         f"{html_rows}</table>"
     )
 
@@ -101,12 +140,14 @@ def run_once(
                 connector.send(payload)
             except ConnectorException as exc:
                 logger.exception("Connector %r failed: %s", connector.name, exc)
+                errors.append(f"{connector.name}: {exc}")
             except Exception as exc:
                 logger.exception(
                     "Unexpected error in connector %r: %s",
                     connector.name,
                     exc,
                 )
+                errors.append(f"{connector.name}: {exc}")
             logger.info("Connector %r done", connector.name)
 
         for inv in new_invoices:

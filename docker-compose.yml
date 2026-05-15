@@ -12,6 +12,7 @@ services:
       - ./data:/workspace/data
       - ./scripts:/workspace/scripts
       - ./secrets:/workspace/secrets
+      - ./tests:/workspace/tests
     restart: unless-stopped
 
   prometheus:

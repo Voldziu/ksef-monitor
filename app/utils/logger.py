@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import logging.handlers
 
-from pythonjsonlogger.jsonlogger import JsonFormatter
+from pythonjsonlogger.json import JsonFormatter
 
 from app.config import Settings
 

@@ -5,6 +5,16 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class PaymentInfo:
+    payment_due_date: str | None = None
+    paid: bool | None = None
+    payment_date: str | None = None
+    paid_partially: bool | None = None
+    paid_amount: float | None = None
+    payment_form_code: str | None = None
+
+
+@dataclass(frozen=True)
 class Invoice:
     ksef_reference_number: str
     seller_nip: str | None
@@ -14,6 +24,7 @@ class Invoice:
     acquisition_date: str | None
     gross_amount: float | None
     currency: str | None
+    payment: PaymentInfo = field(default_factory=PaymentInfo)
 
 
 @dataclass(frozen=True)
