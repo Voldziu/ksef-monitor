@@ -9,7 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # KSeF
@@ -22,6 +24,8 @@ class Settings(BaseSettings):
     KSEF_KEY_PASSWORD: str = ""
     KSEF_CERT_SUBJECT_IDENTIFIER_TYPE: str = "certificateSubject"
     CHECK_INTERVAL_MINUTES: int = 15
+    KSEF_FETCH_DELAY_SECONDS: float = 0.5
+    KSEF_FETCH_RETRY_COUNT: int = 3
 
     # Notifications
     NOTIFICATION_CHANNELS: list[str] = ["mail"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime, timedelta
 
 from ksef_client import KsefClient
@@ -74,29 +75,39 @@ def _fetch_payment_info(
     client: KsefClient,
     ksef_number: str,
     access_token: str | None,
+    delay: float = 0.0,
+    retries: int = 1,
 ) -> PaymentInfo:
     if not access_token:
         return PaymentInfo()
-    try:
-        content = client.invoices.get_invoice(
-            ksef_number,
-            access_token=access_token,
-        )
-        errors = validate_fa3_xml(content.content)
-        if errors:
-            logger.warning(
-                "Invoice XML failed FA(3) XSD validation (ksef_number=%s): %s",
+
+    for attempt in range(retries):
+        if delay > 0:
+            time.sleep(delay)
+
+        try:
+            content = client.invoices.get_invoice(
                 ksef_number,
-                "; ".join(errors[:3]),
+                access_token=access_token,
             )
-        return parse_payment_info(content.content)
-    except (KsefApiError, KsefHttpError) as exc:
-        logger.warning(
-            "Failed to fetch invoice XML for payment info (ksef_number=%s): %s",
-            ksef_number,
-            exc,
-        )
-        return PaymentInfo()
+            errors = validate_fa3_xml(content.content)
+            if errors:
+                logger.warning(
+                    "Invoice XML failed FA(3) XSD validation (ksef_number=%s): %s",
+                    ksef_number,
+                    "; ".join(errors[:3]),
+                )
+            return parse_payment_info(content.content)
+        except (KsefApiError, KsefHttpError) as exc:
+            logger.warning(
+                "Failed to fetch invoice XML for payment info (ksef_number=%s, attempt=%d/%d): %s",
+                ksef_number,
+                attempt + 1,
+                retries,
+                exc,
+            )
+
+    return PaymentInfo()
 
 
 class KsefService:
@@ -146,7 +157,9 @@ class KsefService:
             )
         except (KsefApiError, KsefHttpError) as exc:
             logger.exception(
-                "KSeF authentication failed (method=%s): %s", method, exc,
+                "KSeF authentication failed (method=%s): %s",
+                method,
+                exc,
             )
             raise
 
@@ -190,6 +203,7 @@ class KsefService:
                     page_size=page_size,
                     page_offset=page_offset,
                 )
+                logger.info("Raw invoices from API: %d", len(resp.invoices))
                 for meta in resp.invoices:
                     if not meta.ksef_number:
                         continue
@@ -197,6 +211,8 @@ class KsefService:
                         client,
                         meta.ksef_number,
                         self._access_token,
+                        delay=self._settings.KSEF_FETCH_DELAY_SECONDS,
+                        retries=self._settings.KSEF_FETCH_RETRY_COUNT,
                     )
                     inv = _map_invoice(meta, payment)
                     if inv:
