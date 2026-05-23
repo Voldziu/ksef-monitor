@@ -8,8 +8,8 @@ services:
       - "${METRICS_PORT:-8000}:${METRICS_PORT:-8000}"
     volumes:
       - ./app:/workspace/app
-      - ./logs:/workspace/logs
-      - ./data:/workspace/data
+      - ./data/${NAME}:/workspace/data
+      - ./logs/${NAME}:/workspace/logs
       - ./scripts:/workspace/scripts
       - ./secrets:/workspace/secrets
       - ./tests:/workspace/tests

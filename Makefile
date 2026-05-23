@@ -14,7 +14,8 @@ build:
 	ENV_FILE=$(env_file) $(COMPOSE_CMD) build
 
 up:
-	ENV_FILE=$(env_file) $(COMPOSE_CMD) up -d
+	mkdir -p data/$(name) logs/$(name)
+	ENV_FILE=$(env_file) NAME=$(name) $(COMPOSE_CMD) up -d
 
 shell:
 	$(COMPOSE_CMD) exec ksef-monitor bash
