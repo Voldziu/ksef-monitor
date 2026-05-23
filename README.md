@@ -78,10 +78,10 @@ Aplikacja uruchamiana jest wyłącznie przez Docker Compose.
 
 1. **Sklonuj repo i wejdź do katalogu projektu.**
 
-2. **Skopiuj `.env.example` do `.env` i uzupełnij wartości:**
+2. **Skopiuj `.env.example` do `.env.{nazwa}` i uzupełnij wartości:**
 
    ```bash
-   cp .env.example .env
+   cp .env.example .env.{nazwa}
    ```
 
    Co najmniej: `KSEF_NIP`, dane uwierzytelnienia, adres `MAIL_TO`.
@@ -93,20 +93,27 @@ Aplikacja uruchamiana jest wyłącznie przez Docker Compose.
    cp /sciezka/do/twojego.key secrets/ksef-cert.key
    chmod 600 secrets/*.key
    ```
-
-4. **Uruchom stack:**
+4. **Nadaj uprawnienia do zapisu katalogowi `data/` i `logs/`** (SQLite będzie tam tworzyć bazę):
 
    ```bash
-   docker compose up -d
+   mkdir -p data
+   sudo chmod -R 777 ./data
+   mkdir -p logs
+   sudo chmod -R 777 ./logs
+   ```
+5. **Uruchom stack:**
+
+   ```bash
+   docker compose -p ksef-{name} up -d
    ```
 
    Z MailHogiem (do testów lokalnych e-maili):
 
    ```bash
-   docker compose --profile dev up -d
+   docker compose -p ksef-{name} --profile dev up -d
    ```
 
-5. **Otwórz UI:**
+6. **Otwórz UI:**
 
    | Serwis | URL | Login |
    |---|---|---|
@@ -115,10 +122,10 @@ Aplikacja uruchamiana jest wyłącznie przez Docker Compose.
    | Grafana | http://localhost:3000 | `admin` / `admin` |
    | MailHog (profil `dev`) | http://localhost:8025 | — |
 
-6. **Podejrzyj logi:**
+7. **Podejrzyj logi:**
 
    ```bash
-   docker compose logs -f ksef-monitor
+   docker compose -p ksef-{name} logs -f ksef-monitor
    ```
 
 ## Konfiguracja (`.env`)
@@ -142,6 +149,8 @@ Aplikacja uruchamiana jest wyłącznie przez Docker Compose.
 | `STORAGE_PATH` | Plik bazy SQLite | `data/invoices.db` |
 | `METRICS_ENABLED` | Włącz Prometheus | `true` |
 | `METRICS_PORT` | Port metryk | `8000` |
+| `PROMETHEUS_PORT` | Port metryk | `9090` |
+| `GRAFANA_PORT` | Port metryk | `3000` |
 | `LOG_LEVEL` | `DEBUG`/`INFO`/`WARNING`/`ERROR` | `INFO` |
 | `LOG_FORMAT` | `text` lub `json` | `text` |
 
@@ -166,7 +175,7 @@ python scripts/simulate_invoice.py
 Można też uruchomić pojedynczy cykl monitorowania bez wchodzenia do shella:
 
 ```bash
-docker compose exec ksef-monitor python -m app.main run-once
+docker compose -p ksef-{name} exec ksef-monitor python -m app.main run-once
 ```
 
 ## Monitoring
@@ -201,8 +210,8 @@ secrets/
 ### Run
 
 ```bash
-cp .env.example .env       # then edit values
-docker compose up -d
+cp .env.example .env.{nazwa}       # then edit values
+docker compose -p ksef-{name} up -d
 ```
 
 UIs: metrics `:8000/metrics`, Prometheus `:9090`, Grafana `:3000` (`admin`/`admin`), MailHog `:8025` (profile `dev`).
@@ -212,7 +221,7 @@ UIs: metrics `:8000/metrics`, Prometheus `:9090`, Grafana `:3000` (`admin`/`admi
 Run only inside the container:
 
 ```bash
-docker compose exec ksef-monitor bash
+docker compose -p ksef-{name} exec ksef-monitor bash
 python scripts/fetch.py
 python scripts/simulate_invoice.py
 ```

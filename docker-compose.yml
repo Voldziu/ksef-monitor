@@ -1,11 +1,10 @@
 services:
   ksef-monitor:
     build: .
-    env_file: .env
     environment:
       TZ: Europe/Warsaw
     ports:
-      - "8000:8000"
+      - "${METRICS_PORT:-8000}:${METRICS_PORT:-8000}"
     volumes:
       - ./app:/workspace/app
       - ./logs:/workspace/logs
@@ -18,7 +17,7 @@ services:
   prometheus:
     image: prom/prometheus:v3.4.0
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -31,7 +30,7 @@ services:
   grafana:
     image: grafana/grafana:11.6.1
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
