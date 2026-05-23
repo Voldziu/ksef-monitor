@@ -1,23 +1,26 @@
-name ?= default
-
+name ?=
 .PHONY: build up shell down logs
+ifeq ($(name),)
+    env_file = .env
+    project_name = ksef
+else
+    env_file = .env.$(name)
+    project_name = ksef-$(name)
+endif
 
+COMPOSE_CMD = docker compose --env-file $(env_file) -p $(project_name)
 
 build:
-	 docker compose --env-file .env.$(name) -p ksef-$(name) build
-
+	ENV_FILE=$(env_file) $(COMPOSE_CMD) build
 
 up:
-	 docker compose --env-file .env.$(name) -p ksef-$(name) up -d
-
+	ENV_FILE=$(env_file) $(COMPOSE_CMD) up -d
 
 shell:
-	docker compose -p ksef-$(name) exec ksef-monitor bash
-
+	$(COMPOSE_CMD) exec ksef-monitor bash
 
 down:
-	docker compose -p ksef-$(name) down
-
+	$(COMPOSE_CMD) down
 
 logs:
-	docker compose -p ksef-$(name) logs -f
+	$(COMPOSE_CMD) logs ksef-monitor -f

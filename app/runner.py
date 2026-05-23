@@ -48,6 +48,7 @@ def _build_payload(invoices: list[Invoice], nip: str) -> NotificationPayload:
             f"<td>{inv.payment.payment_due_date or '—'}</td>"
             f"<td>{paid_cell}</td>"
             f"<td>{inv.payment.payment_date or '—'}</td>"
+            f"<td>{inv.payment.bank_account_number or '—'}</td>"
         )
 
     html_rows = "".join(
@@ -79,7 +80,8 @@ def _build_payload(invoices: list[Invoice], nip: str) -> NotificationPayload:
         "<table border='1' cellpadding='4' cellspacing='0'>"
         "<tr><th>Nr KSeF</th><th>Nr faktury</th><th>Sprzedawca</th>"
         "<th>Kwota brutto</th><th>Data wystawienia</th>"
-        "<th>Termin płatności</th><th>Opłacona</th><th>Data zapłaty</th></tr>"
+        "<th>Termin płatności</th><th>Opłacona</th><th>Data zapłaty</th>"
+        "<th>Nr rachunku</th></tr>"
         f"{html_rows}</table>"
     )
 

@@ -77,6 +77,11 @@ def parse_payment_info(xml: str) -> PaymentInfo:
     if termin_platnosci is not None:
         payment_due_date = _text(_find_child(termin_platnosci, "Termin"))
 
+    rachunek_bankowy = _find_child(platnosc, "RachunekBankowy")
+    bank_account_number: str | None = None
+    if rachunek_bankowy is not None:
+        bank_account_number = _text(_find_child(rachunek_bankowy, "NrRB"))
+
     return PaymentInfo(
         payment_due_date=payment_due_date,
         paid=_parse_bool_flag(_text(_find_child(platnosc, "Zaplacono"))),
@@ -86,4 +91,5 @@ def parse_payment_info(xml: str) -> PaymentInfo:
         ),
         paid_amount=_parse_float(_text(_find_child(platnosc, "KwotaZaplacona"))),
         payment_form_code=_text(_find_child(platnosc, "FormaPlatnosci")),
+        bank_account_number=bank_account_number,
     )

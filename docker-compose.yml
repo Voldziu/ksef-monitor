@@ -1,6 +1,7 @@
 services:
   ksef-monitor:
     build: .
+    env_file: ${ENV_FILE:-.env}
     environment:
       TZ: Europe/Warsaw
     ports:

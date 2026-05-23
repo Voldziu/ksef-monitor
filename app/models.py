@@ -12,6 +12,7 @@ class PaymentInfo:
     paid_partially: bool | None = None
     paid_amount: float | None = None
     payment_form_code: str | None = None
+    bank_account_number: str | None = None
 
 
 @dataclass(frozen=True)
