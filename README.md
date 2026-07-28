@@ -139,7 +139,8 @@ Aplikacja uruchamiana jest wyłącznie przez Docker Compose.
 | `KSEF_CERT_PATH` | Ścieżka do `.crt`/`.pem` (dla `certificate`) | — |
 | `KSEF_KEY_PATH` | Ścieżka do `.key` (dla `certificate`) | — |
 | `KSEF_KEY_PASSWORD` | Hasło do klucza (opcjonalne) | — |
-| `CHECK_INTERVAL_MINUTES` | Interwał pollingu | `15` |
+| `CHECK_TIME` | Godzina pierwszego uruchomienia w ciągu doby (`HH:MM`) | `20:00` |
+| `CHECK_INTERVAL_HOURS` | Odstęp między kolejnymi fetchami (w godzinach) | `24` |
 | `NOTIFICATION_CHANNELS` | Aktywne kanały, JSON list | `["mail"]` |
 | `MAIL_HOST`, `MAIL_PORT` | SMTP host/port | `localhost`, `1025` |
 | `MAIL_USE_TLS` | TLS dla SMTP | `false` |

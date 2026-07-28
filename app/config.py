@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Literal
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_CHECK_TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
 
 class Settings(BaseSettings):
@@ -22,7 +25,10 @@ class Settings(BaseSettings):
     KSEF_KEY_PATH: Path | None = None
     KSEF_KEY_PASSWORD: str = ""
     KSEF_CERT_SUBJECT_IDENTIFIER_TYPE: str = "certificateSubject"
-    CHECK_INTERVAL_MINUTES: int = 15
+    # Godzina pierwszego / referencyjnego uruchomienia w ciągu doby, format "HH:MM".
+    CHECK_TIME: str = "20:00"
+    # Odstęp między kolejnymi uruchomieniami (co ile godzin fetchować).
+    CHECK_INTERVAL_HOURS: int = 24
     KSEF_FETCH_DELAY_SECONDS: float = 0.5
     KSEF_FETCH_RETRY_COUNT: int = 3
 
@@ -61,6 +67,24 @@ class Settings(BaseSettings):
         if v not in ("test", "demo", "prod"):
             raise ValueError("KSEF_ENV must be one of: test, demo, prod")
         return v
+
+    @field_validator("CHECK_TIME")
+    @classmethod
+    def validate_check_time(cls, v: str) -> str:
+        if not _CHECK_TIME_RE.match(v):
+            raise ValueError("CHECK_TIME must be in HH:MM 24h format, e.g. 20:00")
+        return v
+
+    @field_validator("CHECK_INTERVAL_HOURS")
+    @classmethod
+    def validate_check_interval_hours(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("CHECK_INTERVAL_HOURS must be a positive integer")
+        return v
+
+    def check_time_parts(self) -> tuple[int, int]:
+        hour_str, minute_str = self.CHECK_TIME.split(":")
+        return int(hour_str), int(minute_str)
 
     @model_validator(mode="after")
     def validate_auth_method(self) -> Settings:

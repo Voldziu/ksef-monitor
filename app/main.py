@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import signal
+from datetime import datetime, timedelta
 
 import prometheus_client
 from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import Settings
 from app.ksef.service import KsefService
@@ -52,12 +54,25 @@ def main() -> None:
     _run_scheduler(settings, ksef_service, repo, connectors, logger)
 
 
+def _next_run_at(hour: int, minute: int) -> datetime:
+    now = datetime.now().astimezone()
+    candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if candidate <= now:
+        candidate += timedelta(days=1)
+    return candidate
+
+
 def _run_scheduler(settings, ksef_service, repo, connectors, logger) -> None:
+    hour, minute = settings.check_time_parts()
+    first_run = _next_run_at(hour, minute)
+
     scheduler = BlockingScheduler()
     scheduler.add_job(
         func=run_once,
-        trigger="interval",
-        minutes=settings.CHECK_INTERVAL_MINUTES,
+        trigger=IntervalTrigger(
+            hours=settings.CHECK_INTERVAL_HOURS,
+            start_date=first_run,
+        ),
         kwargs={
             "ksef_service": ksef_service,
             "repo": repo,
@@ -77,11 +92,12 @@ def _run_scheduler(settings, ksef_service, repo, connectors, logger) -> None:
     signal.signal(signal.SIGINT, _shutdown)
 
     logger.info(
-        "Scheduler started — checking every %d minutes",
-        settings.CHECK_INTERVAL_MINUTES,
+        "Scheduler started — first run at %s, then every %d hours",
+        first_run.isoformat(),
+        settings.CHECK_INTERVAL_HOURS,
     )
 
-    # Run immediately on startup, then on schedule
+
     run_once(ksef_service, repo, connectors, settings.KSEF_NIP)
     scheduler.start()
 
