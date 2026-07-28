@@ -25,9 +25,7 @@ class Settings(BaseSettings):
     KSEF_KEY_PATH: Path | None = None
     KSEF_KEY_PASSWORD: str = ""
     KSEF_CERT_SUBJECT_IDENTIFIER_TYPE: str = "certificateSubject"
-    # Godzina pierwszego / referencyjnego uruchomienia w ciągu doby, format "HH:MM".
     CHECK_TIME: str = "20:00"
-    # Odstęp między kolejnymi uruchomieniami (co ile godzin fetchować).
     CHECK_INTERVAL_HOURS: int = 24
     KSEF_FETCH_DELAY_SECONDS: float = 0.5
     KSEF_FETCH_RETRY_COUNT: int = 3
