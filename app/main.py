@@ -82,6 +82,8 @@ def _run_scheduler(settings, ksef_service, repo, connectors, logger) -> None:
         id="ksef_monitor",
         replace_existing=True,
         max_instances=1,
+        misfire_grace_time=3600,
+        coalesce=True,
     )
 
     def _shutdown(signum, frame) -> None:
